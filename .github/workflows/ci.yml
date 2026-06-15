@@ -11,7 +11,18 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v8.2.0
-      - run: uv sync
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run pytest -v
+      - name: Install dependencies
+        run: uv sync
+      - name: Install platform dbt packages
+        # dbt_utils is required by the metricflow_time_spine macro.
+        # dbt_packages/ is gitignored; install before tests run.
+        run: uv run dbt deps --project-dir platform
+      - name: Lint
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Verify fixture SHA
+        run: sha256sum -c tests/fixtures/FIXTURE_SHA
+      - name: Test
+        run: uv run pytest -v
+        # check-semantic-drift requires the credit-data-platform repo to be present.
+        # It is not available in CI (external repo, not a submodule).
+        # Run it locally with: make check-semantic-drift

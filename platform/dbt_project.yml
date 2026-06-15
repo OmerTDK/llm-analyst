@@ -1,0 +1,26 @@
+name: semantic_layer_client
+version: "0.1.0"
+profile: semantic_layer_client
+
+flags:
+  send_anonymous_usage_stats: false
+  require_explicit_package_overrides_for_builtin_materializations: false
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+
+target-path: target
+clean-targets:
+  - target
+  - dbt_packages
+
+models:
+  semantic_layer_client:
+    metricflow:
+      +materialized: table
+    backing:
+      +materialized: view
+      +schema: backing

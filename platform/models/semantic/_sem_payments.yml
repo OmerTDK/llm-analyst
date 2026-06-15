@@ -1,0 +1,102 @@
+semantic_models:
+  # Monthly performance grain: one row per (loan, month on book). Source of the
+  # yield, delinquency, and average-balance metrics, dimensioned by the
+  # delinquency status observed that month.
+  - name: loan_payments
+    description: One row per loan-month, from the monthly payment fact.
+    model: ref('fct_payment')
+    defaults:
+      agg_time_dimension: report_day
+    entities:
+      - name: payment
+        type: primary
+        expr: payment_key
+      - name: loan
+        type: foreign
+        expr: loan_id
+    dimensions:
+      - name: report_day
+        description: Performance reporting month, exposed at day grain for metric_time.
+        type: time
+        expr: report_month
+        type_params:
+          time_granularity: day
+      - name: product
+        type: categorical
+        expr: product_type
+      - name: delinquency_status
+        description: Delinquency bucket observed in the reporting month.
+        type: categorical
+        expr: delinquency_bucket
+    measures:
+      - name: beginning_balance
+        description: Sum of beginning balances across loan-months (yield denominator).
+        agg: sum
+        expr: beginning_balance_amount
+      - name: interest_charged
+        description: Sum of interest charged across loan-months (yield numerator).
+        agg: sum
+        expr: interest_charged_amount
+      - name: ending_balance_avg
+        description: Average ending balance across loan-months.
+        agg: average
+        expr: ending_balance_amount
+      - name: loan_month_count
+        description: Count of loan-months (delinquency denominator).
+        agg: count
+        expr: payment_key
+      - name: delinquent_loan_month_count
+        description: Loan-months in a delinquent bucket (30+ DPD through default).
+        agg: sum
+        expr: >
+          case
+            when delinquency_bucket in ('dpd_30', 'dpd_60', 'dpd_90_plus', 'default')
+              then 1 else 0
+          end
+
+metrics:
+  # Building-block simple metrics (ratio inputs must be metrics, not measures).
+  - name: interest_charged_total
+    label: Interest charged
+    description: Total interest charged across loan-months (yield numerator).
+    type: simple
+    type_params:
+      measure: interest_charged
+  - name: beginning_balance_total
+    label: Beginning balance
+    description: Total beginning balance across loan-months (yield denominator).
+    type: simple
+    type_params:
+      measure: beginning_balance
+  - name: delinquent_loan_months
+    label: Delinquent loan-months
+    description: Loan-months in a delinquent bucket (delinquency numerator).
+    type: simple
+    type_params:
+      measure: delinquent_loan_month_count
+  - name: loan_months
+    label: Loan-months
+    description: Count of loan-months (delinquency denominator).
+    type: simple
+    type_params:
+      measure: loan_month_count
+  - name: avg_balance
+    label: Average balance
+    description: Average outstanding ending balance per loan-month.
+    type: simple
+    type_params:
+      measure: ending_balance_avg
+  - name: portfolio_yield
+    label: Portfolio yield
+    description: Interest charged divided by beginning balance (gross periodic yield).
+    type: ratio
+    type_params:
+      numerator: interest_charged_total
+      denominator: beginning_balance_total
+  - name: delinquency_rate
+    label: Delinquency rate
+    description: Share of loan-months observed in a delinquent bucket (30+ DPD).
+    type: ratio
+    type_params:
+      numerator: delinquent_loan_months
+      denominator: loan_months
