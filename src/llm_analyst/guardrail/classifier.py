@@ -21,7 +21,9 @@ A question is OUT-OF-SCOPE when it:
     first-person pronouns referring to borrower state)
   - asks about raw SQL / table access / database structure
   - is about a non-portfolio domain (stock market, HR, marketing, strategy)
-  - contains explicit raw-data signals: SELECT, FROM, WHERE, INSERT, UPDATE, DROP
+  - contains explicit raw-data signals: SELECT, INSERT, UPDATE, DELETE, DROP, CREATE, ALTER
+    (FROM and WHERE are excluded — they are common English words that false-positive on
+    legitimate questions like "origination volume from Q1" or "defaults where vintage is 2024")
 
 The classifier is conservative: when in doubt (no strong signal in either
 direction), it returns IN_SCOPE and defers to the planner's governance checks.
@@ -50,8 +52,13 @@ _IN_SCOPE_PATTERNS: list[re.Pattern[str]] = [
 
 # ── Out-of-scope hard-block patterns ─────────────────────────────────────────
 
-# SQL injection / raw table access
-_SQL_PATTERN = re.compile(r"\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|FROM|WHERE)\b", re.I)
+# SQL injection / raw table access.
+# FROM and WHERE are excluded: they are common English prepositions/conjunctions
+# and produce false negatives on legitimate questions like "What is the
+# origination volume from Q1?" or "Show defaults where vintage is 2024?".
+# The remaining keywords (SELECT, INSERT, UPDATE, DELETE, DROP, CREATE, ALTER)
+# are unambiguous SQL signals that do not appear in normal English prose.
+_SQL_PATTERN = re.compile(r"\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER)\b", re.I)
 
 # Out-of-scope domain signals
 _OUT_OF_SCOPE_PATTERNS: list[re.Pattern[str]] = [
@@ -59,12 +66,23 @@ _OUT_OF_SCOPE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\b(stock|share.?price|equity|ticker|dividend|P\/E|market.?cap)\b", re.I),
     # HR / personnel / salary signals
     re.compile(r"\b(CEO|CFO|CTO|salary|employee|staff|headcount|org.?chart)\b", re.I),
-    # Marketing / brand signals
-    re.compile(r"\b(marketing|campaign|brand|ad(vertis(ing|ement))?|budget)\b", re.I),
-    # Personal information about a specific named borrower
-    re.compile(r"\b(my\s+credit|my\s+loan|my\s+account|credit\s+score\s+for)\b", re.I),
-    # Named individuals (heuristic: capitalized first name followed by last name)
-    re.compile(r"\b[A-Z][a-z]{2,}\s+[A-Z][a-z]{2,}\b"),
+    # Marketing / brand signals.
+    # "budget" is excluded from this group: it is common in finance/portfolio
+    # contexts ("origination budget target", "Q3 budget vs. actuals"). Bare
+    # "budget" is not a reliable out-of-scope signal. If marketing-budget
+    # phrasing must be blocked, use a compound pattern anchored to a marketing
+    # term (e.g. "marketing budget") rather than bare "budget".
+    re.compile(r"\b(marketing|campaign|brand|ad(vertis(ing|ement))?)\b", re.I),
+    # Personal information about a specific named borrower.
+    # "credit score" (without a portfolio modifier) is a PII signal — the governed
+    # semantic layer does not expose individual credit scores.
+    re.compile(r"\b(my\s+credit|my\s+loan|my\s+account|credit\s+score(\s+for)?)\b", re.I),
+    # Named individuals (heuristic: three or more capitalized words in sequence,
+    # e.g. "John Michael Smith"). Two-word patterns are excluded because they
+    # produce false negatives on geographic names ("New York", "San Francisco",
+    # "North Carolina") that appear in legitimate portfolio-dimension questions.
+    # Three consecutive capitalized words is a much stronger personal-name signal.
+    re.compile(r"\b[A-Z][a-z]{2,}\s+[A-Z][a-z]{2,}\s+[A-Z][a-z]{2,}\b"),
     # Role/person queries (who is, head of, director of, manager of)
     re.compile(r"\b(who\s+is|head\s+of|director\s+of|manager\s+of|chief\s+of|VP\s+of)\b", re.I),
 ]

@@ -18,11 +18,14 @@ from typing import Any, Protocol, runtime_checkable
 import anthropic
 
 # Model constants: the only place model IDs appear in this codebase.
-# Updated 2026-06-15 to current Anthropic offerings.
+# Use the canonical alias form (no date suffix) so routing follows the latest
+# supported snapshot of that model series. Date-suffixed IDs pin to a specific
+# sub-release that Anthropic may retire without notice.
+# Verify current aliases: https://docs.anthropic.com/en/docs/about-claude/models
 # Haiku for planning: low-latency structured output, no prose needed.
 # Sonnet reserved for Phase 3 answer composition where prose quality matters.
-PLANNER_MODEL = "claude-haiku-4-5-20251001"
-COMPOSER_MODEL = "claude-sonnet-4-5-20250929"
+PLANNER_MODEL = "claude-haiku-4-5"
+COMPOSER_MODEL = "claude-sonnet-4-5"
 
 
 @runtime_checkable

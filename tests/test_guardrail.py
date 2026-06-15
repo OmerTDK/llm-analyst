@@ -89,6 +89,76 @@ def test_non_portfolio_finance_question_is_refused(semantic_client: SemanticLaye
     assert isinstance(result, RefusalResponse)
 
 
+# ── Classifier false-positive regression tests ────────────────────────────────
+
+
+def test_from_in_natural_language_is_in_scope() -> None:
+    """'from' as a preposition in a natural-language question must not be refused.
+
+    Regression for the _SQL_PATTERN blocker: removing FROM from the SQL pattern
+    prevents false-positive refusals on questions like 'origination volume from Q1'.
+    """
+    from llm_analyst.guardrail.classifier import is_in_scope
+
+    assert is_in_scope("What is the origination volume from Q1 2024?"), (
+        "Natural-language 'from' must not trigger the SQL pattern"
+    )
+
+
+def test_where_in_natural_language_is_in_scope() -> None:
+    """'where' as a conjunction in a natural-language question must not be refused.
+
+    Regression for the _SQL_PATTERN blocker: removing WHERE from the SQL pattern
+    prevents false-positive refusals on questions like 'defaults where vintage is 2024'.
+    """
+    from llm_analyst.guardrail.classifier import is_in_scope
+
+    assert is_in_scope("Show me defaults where vintage is 2023"), (
+        "Natural-language 'where' must not trigger the SQL pattern"
+    )
+
+
+def test_budget_in_portfolio_context_is_in_scope() -> None:
+    """'budget' in a portfolio/finance context must not be refused.
+
+    Regression for the budget-keyword blocker: removing bare 'budget' from the
+    marketing out-of-scope pattern prevents false-positive refusals on legitimate
+    questions about origination budget targets or Q3 budget vs. actuals.
+    """
+    from llm_analyst.guardrail.classifier import is_in_scope
+
+    assert is_in_scope("What is the origination budget remaining?"), (
+        "Portfolio 'budget' question must not be treated as out-of-scope marketing signal"
+    )
+
+
+def test_geographic_two_word_name_is_in_scope() -> None:
+    """Two-word geographic names must not be refused as personal-name signals.
+
+    Regression for the named-individual heuristic: requiring 3+ consecutive
+    capitalized words prevents false-positive refusals on geographic portfolio
+    questions like 'delinquency rate for the New York cohort'.
+    """
+    from llm_analyst.guardrail.classifier import is_in_scope
+
+    assert is_in_scope("What is the delinquency rate for the New York cohort?"), (
+        "Two-word geographic name must not trigger the named-individual pattern"
+    )
+
+
+def test_marketing_budget_is_still_out_of_scope() -> None:
+    """'marketing budget' questions must remain out-of-scope after removing bare 'budget'.
+
+    The word 'marketing' is still an out-of-scope signal; this test confirms the
+    budget-removal fix does not accidentally allow marketing-related questions through.
+    """
+    from llm_analyst.guardrail.classifier import is_in_scope
+
+    assert not is_in_scope("What is the marketing budget for Q3?"), (
+        "'marketing budget' must still be refused — 'marketing' remains an out-of-scope keyword"
+    )
+
+
 # ── In-scope questions are answered ───────────────────────────────────────────
 
 
@@ -320,11 +390,17 @@ def test_mutant_kill_ungoverned_metric_never_reaches_semantic_client(
 
     The test injects a planner response with a metric that is NOT in GOVERNED_METRICS.
     The guardrail must intercept it and return RefusalResponse.
-    If a mutant removes the GovernanceError catch, the semantic client raises GovernanceError
-    (since the client also validates), and this test would still pass (both paths refuse).
-    But if a mutant also removed the semantic-client check AND the guardrail catch, the
-    semantic client would attempt to run an mf query with an ungoverned metric — this would
-    raise a different error (not RefusalResponse), failing this test.
+
+    If a mutant removes the except GovernanceError catch in guarded_analyst.py,
+    PlannerGovernanceError propagates uncaught from self._analyst.answer(question)
+    — the planner raises before the semantic client is reached. The ask() call would
+    raise instead of returning a RefusalResponse, and this assertion would fail.
+    This test therefore kills that mutant.
+
+    If a mutant also removed the semantic-client governance check AND the guardrail
+    catch, the semantic client would attempt to run an mf query with an ungoverned
+    metric, raising a different error rather than returning RefusalResponse —
+    also failing this test.
 
     All seven governed metrics are checked to ensure none are accidentally ungoverned.
     """
