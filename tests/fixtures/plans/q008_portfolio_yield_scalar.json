@@ -1,0 +1,10 @@
+{
+    "question": "What yield is the portfolio generating overall?",
+    "expected_plan": {
+        "metric": "portfolio_yield",
+        "dimensions": [],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "portfolio_yield is the ratio of interest charged to average outstanding balance, giving the overall portfolio earning rate."
+    }
+}

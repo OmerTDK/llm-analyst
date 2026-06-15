@@ -2,7 +2,7 @@
 
 Natural-language analytics over a governed semantic layer, with eval suite and guardrails
 
-> Status: Phase 1 complete — semantic client shipped and verified.
+> Status: Phase 2 complete — Analyst orchestrator shipped and green.
 
 ## Why this exists
 
@@ -33,12 +33,14 @@ tests/fixtures/
 
 | Metric | Value |
 |---|---|
-| Test count | 23 passing |
-| Runtime | ~19 s (fixture already built; mf subprocess overhead) |
+| Test count | 68 passing (14 live deselected) |
+| Runtime | ~96 s (fixture already built; mf subprocess overhead) |
 | Fixture size | 6.5 MB |
 | Governed metrics | 7 |
 | `origination_volume` (pinned) | 52,960,250.00 |
 | `default_rate` (pinned) | 47 / 1500 = 0.03133... |
+| Phase 2 modules | `QueryPlanner`, `MockLLMClient`, `AnswerComposer`, `Analyst` |
+| Golden-plan fixtures | 14 (2 phrasings × 7 metrics) |
 
 ## Design decisions
 
@@ -50,7 +52,7 @@ See [docs/adr/](docs/adr/) — each major decision documented with its trade-off
 git clone <repo>
 cd llm-analyst
 uv sync
-make ci          # lint + fixture SHA check + 23 tests — ~19 s
+make ci          # lint + fixture SHA check + 68 tests — ~96 s
 ```
 
 `make ci` does not require the `credit-data-platform` repo. The fixture is pre-committed at `tests/fixtures/semantic_fixture.duckdb`. The SHA is verified at CI entry via `check-sha`.

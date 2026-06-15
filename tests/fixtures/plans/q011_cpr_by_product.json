@@ -1,0 +1,10 @@
+{
+    "question": "What is the prepayment rate by product type?",
+    "expected_plan": {
+        "metric": "cpr",
+        "dimensions": ["prepayment_speed__product"],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "cpr (conditional prepayment rate) measures annualized prepayment speed; product breakdown shows which loan types prepay fastest."
+    }
+}

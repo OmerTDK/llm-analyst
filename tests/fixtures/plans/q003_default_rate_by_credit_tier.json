@@ -1,0 +1,10 @@
+{
+    "question": "What is the default rate broken down by credit tier?",
+    "expected_plan": {
+        "metric": "default_rate",
+        "dimensions": ["loan__credit_tier"],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "default_rate measures the fraction of loans that defaulted; credit tier segmentation shows risk concentration."
+    }
+}

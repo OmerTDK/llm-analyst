@@ -1,0 +1,10 @@
+{
+    "question": "What is the portfolio yield by loan product?",
+    "expected_plan": {
+        "metric": "portfolio_yield",
+        "dimensions": ["loan__product"],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "portfolio_yield measures interest income as a fraction of average balance; product breakdown shows earning differences per loan type."
+    }
+}

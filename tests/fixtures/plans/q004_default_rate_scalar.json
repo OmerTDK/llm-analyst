@@ -1,0 +1,10 @@
+{
+    "question": "What percentage of loans in the portfolio have defaulted?",
+    "expected_plan": {
+        "metric": "default_rate",
+        "dimensions": [],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "default_rate is the ratio of defaulted loans to all lifecycle loans, answering the portfolio-level default percentage."
+    }
+}

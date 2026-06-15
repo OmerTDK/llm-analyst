@@ -1,0 +1,10 @@
+{
+    "question": "What does the overall vintage loss curve look like across the book?",
+    "expected_plan": {
+        "metric": "vintage_loss_curve",
+        "dimensions": ["vintage_curve__months_on_book"],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "vintage_loss_curve shows cumulative defaults by age; months_on_book dimension gives the progression of losses over loan lifetime."
+    }
+}

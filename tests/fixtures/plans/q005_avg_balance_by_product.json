@@ -1,0 +1,10 @@
+{
+    "question": "What is the average loan balance by product?",
+    "expected_plan": {
+        "metric": "avg_balance",
+        "dimensions": ["loan__product"],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "avg_balance measures the mean outstanding balance per loan; product breakdown shows how balance differs across loan types."
+    }
+}
