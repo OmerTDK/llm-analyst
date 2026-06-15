@@ -30,6 +30,7 @@ check-semantic-drift: ## Fail if vendored YAML diverges from the pinned platform
 	@PLATFORM_TAG=$$(cat platform/PLATFORM_TAG) && \
 	echo "Checking vendored YAML against credit-data-platform @ $$PLATFORM_TAG" && \
 	diff -r platform/models/semantic/ $(CDP)/models/semantic/ && \
+	diff platform/models/metricflow/metricflow_time_spine.sql $(CDP)/models/metricflow/metricflow_time_spine.sql && \
 	echo "OK — vendored YAML is in sync" || \
 	(echo "ERROR: vendored semantic YAML diverges from $(CDP). Run: make sync-platform CDP=$(CDP)" && exit 1)
 
@@ -55,11 +56,12 @@ build-fixture: ## Build semantic_fixture.duckdb from credit-data-platform (run o
 	$(MAKE) _write-sha
 	@echo "Fixture rebuilt. Commit tests/fixtures/semantic_fixture.duckdb and tests/fixtures/FIXTURE_SHA."
 
-sync-platform: ## Sync vendored YAML and rebuild fixture from a platform commit
+sync-platform: ## Sync vendored YAML and rebuild fixture from CDP at a specific commit (TAG required)
+	@test -n "$(TAG)" || (echo 'Usage: make sync-platform TAG=<commit-sha> CDP=<path>' && exit 1)
 	cp $(CDP)/models/semantic/_sem_*.yml platform/models/semantic/
 	cp $(CDP)/models/metricflow/metricflow_time_spine.sql platform/models/metricflow/
 	$(MAKE) build-fixture CDP=$(CDP)
-	@echo "$${TAG}" > platform/PLATFORM_TAG
+	@echo "$(TAG)" > platform/PLATFORM_TAG
 
 _write-sha: ## Internal: write FIXTURE_SHA (called by build-fixture)
 	@HASH=$$(sha256sum tests/fixtures/semantic_fixture.duckdb | awk '{print $$1}') && \

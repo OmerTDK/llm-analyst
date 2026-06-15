@@ -19,6 +19,8 @@ import time
 from pathlib import Path
 from typing import Literal
 
+import yaml
+
 from .constants import GOVERNED_METRICS
 from .models import (
     _METRIC_YAML_META,
@@ -250,47 +252,15 @@ class SemanticLayerClient:
     def _extract_description_from_yaml(yaml_path: Path, metric_name: str) -> str:
         """Extract the description for a named metric from a vendored YAML file.
 
-        Parses the YAML text line by line rather than loading the full structure,
-        so there is no runtime dependency on PyYAML. The YAML structure is stable
-        (it is vendored and diff-reviewed on each sync), so the line-scan approach
-        is safe.
-
-        Pattern: find "- name: <metric_name>", then the next "description:" line.
+        Loads the YAML with PyYAML (transitively available via dbt-core) so that
+        block scalars containing colons or multi-line text are parsed correctly.
+        PyYAML strips trailing newlines from block scalars automatically.
         """
         if not yaml_path.exists():
             return ""
 
-        text = yaml_path.read_text(encoding="utf-8")
-        lines = text.splitlines()
-        in_target = False
-        description_lines: list[str] = []
-        collecting = False
-
-        for line in lines:
-            stripped = line.strip()
-            if stripped == f"- name: {metric_name}":
-                in_target = True
-                collecting = False
-                description_lines = []
-                continue
-            if in_target:
-                if stripped.startswith("description:"):
-                    value = stripped[len("description:") :].strip()
-                    if value.startswith(">"):
-                        # Block scalar — collect subsequent indented lines
-                        collecting = True
-                        continue
-                    description_lines = [value]
-                    collecting = False
-                    continue
-                if collecting:
-                    if stripped and not stripped.startswith("-") and ":" not in stripped:
-                        description_lines.append(stripped)
-                    elif stripped and ":" in stripped:
-                        # Hit a new key — done collecting
-                        break
-                elif stripped.startswith("- name:") and stripped != f"- name: {metric_name}":
-                    # Hit the next metric entry — stop
-                    break
-
-        return " ".join(description_lines).strip()
+        data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+        for entry in data.get("metrics", []):
+            if entry.get("name") == metric_name:
+                return (entry.get("description") or "").strip()
+        return ""

@@ -16,14 +16,35 @@ from pathlib import Path
 
 import duckdb
 import pytest
+import yaml
 
 from llm_analyst.semantic_client import (
     GOVERNED_METRICS,
     GovernanceError,
     SemanticLayerClient,
 )
+from llm_analyst.semantic_client.models import _METRIC_YAML_META
 
 FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "semantic_fixture.duckdb"
+
+# ── Independent contract anchors ───────────────────────────────────────────────
+# These literals are NOT imported from constants.py — they are an independent
+# contract. If a metric name is renamed in constants.py without updating these
+# literals, the test fails, proving the catalog contract is externally anchored.
+EXPECTED_GOVERNED_METRICS: frozenset[str] = frozenset(
+    {
+        "default_rate",
+        "cpr",
+        "portfolio_yield",
+        "vintage_loss_curve",
+        "origination_volume",
+        "avg_balance",
+        "delinquency_rate",
+    }
+)
+
+# Root of the vendored semantic YAML files (mirrors client.SEMANTIC_LAYER_ROOT).
+_PLATFORM_SEMANTIC_DIR = Path(__file__).resolve().parent.parent / "platform" / "models" / "semantic"
 
 # ── Pinned values ─────────────────────────────────────────────────────────────
 # Derived independently from the fixture (seed=42, cohorts=3, loans-per-cohort=500).
@@ -55,10 +76,22 @@ def client() -> SemanticLayerClient:
 
 
 def test_list_metrics_returns_all_governed(client: SemanticLayerClient) -> None:
-    """list_metrics() must return exactly the seven governed metrics."""
+    """list_metrics() must return exactly the seven governed metrics.
+
+    Asserts against EXPECTED_GOVERNED_METRICS (a literal set defined in this file,
+    NOT imported from constants.py) so the test is an independent contract check.
+    A rename in constants.py without updating this literal will cause a failure here
+    rather than a reflexive round-trip pass.
+    """
     returned = {m.name for m in client.list_metrics()}
-    assert returned == GOVERNED_METRICS, (
-        f"list_metrics returned {returned!r}, expected {sorted(GOVERNED_METRICS)}"
+    assert returned == EXPECTED_GOVERNED_METRICS, (
+        f"list_metrics returned {returned!r}, expected {sorted(EXPECTED_GOVERNED_METRICS)}"
+    )
+    # Also confirm GOVERNED_METRICS import matches the independent anchor — if they
+    # diverge the constants contract itself has drifted.
+    assert GOVERNED_METRICS == EXPECTED_GOVERNED_METRICS, (
+        f"GOVERNED_METRICS in constants.py diverged from test's independent anchor: "
+        f"{sorted(GOVERNED_METRICS)} vs {sorted(EXPECTED_GOVERNED_METRICS)}"
     )
 
 
@@ -82,6 +115,30 @@ def test_each_metric_has_description(client: SemanticLayerClient) -> None:
             f"Metric {metric.name!r} has an empty description — "
             "check that _extract_description_from_yaml parsed the YAML correctly"
         )
+
+
+def test_description_content_spot_check(client: SemanticLayerClient) -> None:
+    """Key description substrings must match the vendored YAML — pins extraction quality.
+
+    Checks that descriptions are the *correct* text, not merely non-empty.
+    These are independent string literals, not derived from the client under test.
+    """
+    by_name = {m.name: m for m in client.list_metrics()}
+    # default_rate: must reference default, not some other metric's text
+    assert "default" in by_name["default_rate"].description.lower(), (
+        f"default_rate description does not mention 'default': "
+        f"{by_name['default_rate'].description!r}"
+    )
+    # origination_volume: must reference principal or origination
+    assert "principal" in by_name["origination_volume"].description.lower(), (
+        f"origination_volume description does not mention 'principal': "
+        f"{by_name['origination_volume'].description!r}"
+    )
+    # cpr: block scalar with multi-line text — must survive colon in body
+    assert "annualized" in by_name["cpr"].description.lower(), (
+        f"cpr description does not mention 'annualized' (block-scalar colon test): "
+        f"{by_name['cpr'].description!r}"
+    )
 
 
 @pytest.mark.parametrize("metric", sorted(GOVERNED_METRICS))
@@ -249,4 +306,35 @@ def test_governance_error_is_not_value_error(client: SemanticLayerClient) -> Non
     assert not isinstance(exc_info.value, ValueError), (
         "GovernanceError must NOT be a subclass of ValueError — "
         "Phase 3 catches it by type and the catch hierarchy must be clean"
+    )
+
+
+# ── _METRIC_YAML_META contract tests ─────────────────────────────────────────
+
+
+@pytest.mark.parametrize("metric_name", sorted(_METRIC_YAML_META.keys()))
+def test_metric_yaml_meta_matches_yaml(metric_name: str) -> None:
+    """_METRIC_YAML_META label and type must match the vendored YAML for each metric.
+
+    Detects silent drift between the hardcoded map in models.py and the YAML files
+    after a sync-platform run. Applied mutant: change cpr's type from 'derived' to
+    'simple' in models.py — this test fails; revert restores green.
+    """
+    label, mtype, yaml_file = _METRIC_YAML_META[metric_name]
+    yaml_path = _PLATFORM_SEMANTIC_DIR / yaml_file
+    assert yaml_path.exists(), f"YAML file not found: {yaml_path}"
+
+    data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+    yaml_metrics = {m["name"]: m for m in data.get("metrics", [])}
+    assert metric_name in yaml_metrics, (
+        f"{metric_name!r} not found in {yaml_file}. Available: {sorted(yaml_metrics.keys())}"
+    )
+    yaml_entry = yaml_metrics[metric_name]
+
+    assert yaml_entry.get("label") == label, (
+        f"_METRIC_YAML_META[{metric_name!r}].label={label!r} "
+        f"but YAML has {yaml_entry.get('label')!r}"
+    )
+    assert yaml_entry.get("type") == mtype, (
+        f"_METRIC_YAML_META[{metric_name!r}].type={mtype!r} but YAML has {yaml_entry.get('type')!r}"
     )
