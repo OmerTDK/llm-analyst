@@ -2,7 +2,7 @@
 
 Natural-language analytics over a governed semantic layer, with eval suite and guardrails
 
-> Status: Phase 3 complete — GuardedAnalyst guardrail shipped and green.
+> Status: Phase 4 complete — eval harness + CI regression gate shipped and green.
 
 ## Why this exists
 
@@ -33,16 +33,21 @@ tests/fixtures/
 
 | Metric | Value |
 |---|---|
-| Test count | 91 passing (14 live deselected) |
-| Runtime | ~96 s (fixture already built; mf subprocess overhead) |
+| Test count | 110 passing (14 live deselected) |
+| Runtime | ~315 s (fixture already built; mf subprocess overhead) |
 | Fixture size | 6.5 MB |
 | Governed metrics | 7 |
 | `origination_volume` (pinned) | 52,960,250.00 |
 | `default_rate` (pinned) | 47 / 1500 = 0.03133... |
 | Phase 2 modules | `QueryPlanner`, `MockLLMClient`, `AnswerComposer`, `Analyst` |
 | Phase 3 modules | `GuardedAnalyst`, `ScopeClassifier`, `RefusalResponse` |
+| Phase 4 modules | `EvalQuestion`, `EvalResult`, `EvalReport`, `load_question_set`, `run_eval`, `score_result` |
 | Golden-plan fixtures | 14 (2 phrasings × 7 metrics) |
+| Eval question set | 22 questions (14 in-scope + 8 out-of-scope/PII/SQL) — see `evals/question_set.yaml` |
+| Eval baseline accuracy | **22/22 = 100 %** (mock eval; deterministic CI) |
+| CI accuracy threshold | 90 % (see ADR-0004 for threshold rationale) |
 | Guardrail strategy | ADR-0003: deterministic rule-based classifier; default-to-True; planner governance as fallback |
+| Eval scoring | ADR-0004: metric-match (not exact-match); refusal = RefusalResponse check |
 
 ## Design decisions
 
@@ -54,7 +59,7 @@ See [docs/adr/](docs/adr/) — each major decision documented with its trade-off
 git clone <repo>
 cd llm-analyst
 uv sync
-make ci          # lint + fixture SHA check + 91 tests — ~96 s
+make ci          # lint + fixture SHA check + 110 tests — ~315 s
 ```
 
 `make ci` does not require the `credit-data-platform` repo. The fixture is pre-committed at `tests/fixtures/semantic_fixture.duckdb`. The SHA is verified at CI entry via `check-sha`.
