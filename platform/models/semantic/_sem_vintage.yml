@@ -1,0 +1,62 @@
+semantic_models:
+  # Vintage-curve mart grain: one row per (cohort, product, credit tier, MOB).
+  # The vintage loss curve is the cumulative default rate, queried grouped by
+  # vintage cohort and months_on_book to trace the curve.
+  - name: vintage_curve
+    description: Cumulative default and prepayment counts per cohort and month on book.
+    model: ref('mart_risk_vintage_curve')
+    defaults:
+      agg_time_dimension: cohort_quarter
+    entities:
+      - name: vintage_curve
+        type: primary
+        expr: vintage_curve_key
+    dimensions:
+      - name: cohort_quarter
+        description: Origination cohort quarter.
+        type: time
+        expr: origination_cohort_quarter
+        type_params:
+          time_granularity: quarter
+      - name: product
+        type: categorical
+        expr: product_type
+      - name: credit_tier
+        type: categorical
+        expr: score_band
+      - name: months_on_book
+        description: Months on book of the curve point.
+        type: categorical
+    measures:
+      - name: cumulative_default_loans
+        description: Cumulative defaulted loans by this month on book (curve numerator).
+        agg: sum
+        expr: cumulative_default_count
+      - name: cohort_exposure_loans
+        description: Cohort size in loans (curve denominator).
+        agg: sum
+        expr: cohort_loan_count
+
+metrics:
+  # Building-block simple metrics (ratio inputs must be metrics, not measures).
+  - name: cumulative_defaults
+    label: Cumulative defaults
+    description: Cumulative defaulted loans by month on book (curve numerator).
+    type: simple
+    type_params:
+      measure: cumulative_default_loans
+  - name: cohort_exposure
+    label: Cohort exposure
+    description: Cohort size in loans (curve denominator).
+    type: simple
+    type_params:
+      measure: cohort_exposure_loans
+  - name: vintage_loss_curve
+    label: Vintage loss curve
+    description: >
+      Cumulative default rate by origination cohort and months on book. Group by
+      vintage cohort and months_on_book to trace the loss curve.
+    type: ratio
+    type_params:
+      numerator: cumulative_defaults
+      denominator: cohort_exposure

@@ -1,0 +1,59 @@
+semantic_models:
+  # Loan-lifecycle accumulating snapshot: one row per loan, terminal outcome
+  # flags filled in. Source of the portfolio-level default_rate.
+  - name: loan_lifecycle
+    description: One row per loan with terminal-outcome flags, from the lifecycle fact.
+    model: ref('fct_loan_lifecycle')
+    defaults:
+      agg_time_dimension: lifecycle_origination_day
+    entities:
+      - name: loan
+        type: primary
+        expr: loan_id
+    dimensions:
+      # Local time dimension for this model's measures. Named distinctly from the
+      # originations model's origination_day: dbt-core enforces globally unique
+      # (primary entity, dimension name) pairings. Vintage / product / credit_tier
+      # are reachable from default_rate via the shared `loan` entity join to
+      # loan_originations, so they are not redefined here.
+      - name: lifecycle_origination_day
+        description: Origination month at day grain (lifecycle model agg time dimension).
+        type: time
+        expr: origination_month
+        type_params:
+          time_granularity: day
+      - name: final_status
+        description: Terminal loan status (active / paid_off / defaulted / recovery_complete).
+        type: categorical
+    measures:
+      - name: lifecycle_loan_count
+        description: Count of loans in the lifecycle fact.
+        agg: count
+        expr: loan_id
+      - name: defaulted_loan_count
+        description: Count of loans that ever reached default.
+        agg: sum
+        expr: case when has_defaulted then 1 else 0 end
+
+metrics:
+  # Building-block simple metrics. Ratio metrics in MetricFlow compose other
+  # metrics, not measures directly, so each ratio input is exposed as a metric.
+  - name: defaulted_loans
+    label: Defaulted loans
+    description: Count of loans that ever reached default.
+    type: simple
+    type_params:
+      measure: defaulted_loan_count
+  - name: lifecycle_loans
+    label: Lifecycle loans
+    description: Count of loans in the lifecycle fact (default-rate denominator).
+    type: simple
+    type_params:
+      measure: lifecycle_loan_count
+  - name: default_rate
+    label: Default rate
+    description: Share of originated loans that ever reached default (lifetime, all MOB).
+    type: ratio
+    type_params:
+      numerator: defaulted_loans
+      denominator: lifecycle_loans

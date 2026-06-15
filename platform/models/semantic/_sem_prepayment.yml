@@ -1,0 +1,71 @@
+semantic_models:
+  # Prepayment-speed mart grain: one row per (cohort, product, MOB) for
+  # amortizing products. Single-month mortality (SMM) is a ratio; the annualized
+  # CPR is a derived metric on top of it so the (1 - SMM)^12 nonlinearity is
+  # defined once and never re-implemented in BI.
+  - name: prepayment_speed
+    description: Pool-level prepayment balances per cohort and month on book.
+    model: ref('mart_risk_prepayment_speed')
+    defaults:
+      agg_time_dimension: cohort_quarter
+    entities:
+      - name: prepayment_speed
+        type: primary
+        expr: prepayment_speed_key
+    dimensions:
+      - name: cohort_quarter
+        description: Origination cohort quarter.
+        type: time
+        expr: origination_cohort_quarter
+        type_params:
+          time_granularity: quarter
+      - name: product
+        type: categorical
+        expr: product_type
+      - name: months_on_book
+        description: Months on book of the pool observation.
+        type: categorical
+    measures:
+      - name: prepaid_balance_total
+        description: Unscheduled principal prepaid (SMM numerator).
+        agg: sum
+        expr: prepaid_balance
+      - name: performing_pool_balance_total
+        description: Performing pool balance exposed to prepayment (SMM denominator).
+        agg: sum
+        expr: performing_pool_balance
+
+metrics:
+  # Building-block simple metrics (ratio inputs must be metrics, not measures).
+  - name: prepaid_balance
+    label: Prepaid balance
+    description: Total unscheduled principal prepaid (SMM numerator).
+    type: simple
+    type_params:
+      measure: prepaid_balance_total
+  - name: performing_pool_balance
+    label: Performing pool balance
+    description: Total performing pool balance (SMM denominator).
+    type: simple
+    type_params:
+      measure: performing_pool_balance_total
+  - name: smm
+    label: Single month mortality
+    description: Prepaid balance over performing pool balance (single-month prepayment rate).
+    type: ratio
+    type_params:
+      numerator: prepaid_balance
+      denominator: performing_pool_balance
+  - name: cpr
+    label: Conditional prepayment rate
+    description: >
+      Annualized prepayment speed, 1 - (1 - SMM)^12. PSA convention. Computed
+      from book-level aggregated SMM (SUM(prepaid_balance) /
+      SUM(performing_pool_balance)), not an average of per-cohort CPR rates.
+      Group by cohort_quarter and product to get per-cohort CPR curves; the
+      portfolio-level ungrouped scalar is the blended book rate.
+    type: derived
+    type_params:
+      expr: 1 - power(1 - smm, 12)
+      metrics:
+        - name: smm

@@ -7,7 +7,12 @@ __pycache__/
 .DS_Store
 uv.lock
 target/
+platform/target/
 dbt_packages/
+platform/dbt_packages/
 logs/
 *.duckdb
+# The pre-built semantic fixture is intentionally committed — it is the stable
+# input to CI (no dbt build in CI). Exception to the *.duckdb rule above.
+!tests/fixtures/semantic_fixture.duckdb
 data/local/

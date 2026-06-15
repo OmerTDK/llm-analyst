@@ -1,0 +1,10 @@
+# Committed on purpose: the dev target is a local DuckDB file with no credentials.
+# The path defaults to the pre-built fixture committed in tests/fixtures/.
+# Override SEMANTIC_DUCKDB_PATH to point at a different database.
+semantic_layer_client:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('SEMANTIC_DUCKDB_PATH', '../tests/fixtures/semantic_fixture.duckdb') }}"
+      threads: 4

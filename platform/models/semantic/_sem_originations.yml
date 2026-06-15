@@ -1,0 +1,57 @@
+semantic_models:
+  # Origination grain: one row per originated loan. Source of the vintage,
+  # product, and credit-tier dimensions shared across the metric set, and of
+  # origination_volume.
+  - name: loan_originations
+    description: One row per originated loan, from the origination fact.
+    model: ref('fct_loan_origination')
+    defaults:
+      agg_time_dimension: origination_day
+    entities:
+      - name: loan
+        type: primary
+        expr: loan_id
+    dimensions:
+      - name: origination_day
+        description: Origination month, exposed at day grain for metric_time.
+        type: time
+        expr: origination_month
+        type_params:
+          time_granularity: day
+      - name: vintage_quarter
+        description: Origination cohort, truncated to calendar quarter.
+        type: time
+        expr: date_trunc('quarter', origination_month)
+        type_params:
+          time_granularity: quarter
+      - name: product
+        description: Credit product the loan belongs to.
+        type: categorical
+        expr: product_type
+      - name: credit_tier
+        description: Credit-score band assigned at origination.
+        type: categorical
+        expr: score_band
+    measures:
+      - name: origination_principal
+        description: Principal advanced at origination (amortizing products).
+        agg: sum
+        expr: principal_amount
+      - name: originated_loan_count
+        description: Count of originated loans.
+        agg: count
+        expr: loan_id
+
+metrics:
+  - name: origination_volume
+    label: Origination volume
+    description: Total principal advanced at origination across the book.
+    type: simple
+    type_params:
+      measure: origination_principal
+  - name: loan_count
+    label: Loan count
+    description: Number of originated loans.
+    type: simple
+    type_params:
+      measure: originated_loan_count

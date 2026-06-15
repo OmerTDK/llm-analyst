@@ -66,7 +66,7 @@ WHERE Balance_inflated = TRUE
 This makes the query read naturally: "where is balance inflated and has payment plan"
 
 2. **Remove backticks from regular identifiers** - Only use backticks for display names in SELECT clause for reports
-3. **Explicit columns in `UNION` or `UNION ALL`** - Never use `SELECT *`, always list all columns explicitly
+3. **Explicit columns in `UNION` or `UNION ALL`** - Never use `SELECT *`, always list all columns explicitly. **Exception: single-table pass-through views** (e.g. `platform/models/backing/`) that mirror an upstream schema verbatim are exempt — listing columns explicitly would break on every `sync-platform` run, creating maintenance overhead with no accuracy gain.
 4. **Consistent formatting** - Proper indentation, one condition per line in WHERE clauses
 
 ## When to Use Parameters

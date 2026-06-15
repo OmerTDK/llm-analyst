@@ -2,11 +2,25 @@
 name = "llm-analyst"
 version = "0.1.0"
 description = "Natural-language analytics over a governed semantic layer, with eval suite and guardrails"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = []
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/llm_analyst"]
+
 [dependency-groups]
-dev = ["pytest>=8.0", "ruff>=0.8", "pre-commit>=4.0"]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8",
+    "pre-commit>=4.0",
+    "dbt-duckdb>=1.10.1,<1.11",
+    "dbt-metricflow>=0.13.0,<0.14.0",
+    "duckdb>=1.2.0,<1.3.0",
+]
 
 [tool.ruff]
 line-length = 100
