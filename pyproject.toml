@@ -5,6 +5,7 @@ description = "Natural-language analytics over a governed semantic layer, with e
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "anthropic>=0.40,<1",
+    "pyyaml>=6.0",
 ]
 
 [build-system]

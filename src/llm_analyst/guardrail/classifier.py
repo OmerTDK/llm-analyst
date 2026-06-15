@@ -42,11 +42,11 @@ import re
 _IN_SCOPE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\b(origination|originated|loan.?(volume|count|book)|funded|disbursed)\b", re.I),
     re.compile(r"\b(default.?rate|default(ed)?|loss.?rate|credit.?loss|write.?off)\b", re.I),
-    re.compile(r"\b(avg|average).?balance\b", re.I),
+    re.compile(r"\b(avg|average)\b.*\bbalance\b", re.I),
     re.compile(r"\b(portfolio.?yield|interest.?rate|annualized.?return|yield)\b", re.I),
     re.compile(r"\b(delinquen(cy|t)|past.?due|overdue|days.?past.?due)\b", re.I),
     re.compile(r"\b(prepay(ment)?|prepaid|cpr|conditional.?prepayment)\b", re.I),
-    re.compile(r"\b(vintage|cohort|loss.?curve)\b", re.I),
+    re.compile(r"\b(vintage|cohort|loss.?curve|cumulative.?loss(es)?)\b", re.I),
     re.compile(r"\b(portfolio|loan.?book|loan.?portfolio|loan.?pool)\b", re.I),
 ]
 

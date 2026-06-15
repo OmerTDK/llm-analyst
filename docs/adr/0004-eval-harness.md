@@ -75,6 +75,13 @@ The mutant-kill test (a planner that always returns `default_rate`) produces
 accuracy ≈ 0.45, which is below 0.90. This confirms the gate catches a structural
 regression and is not a trivially-passing assertion.
 
+**Scope of the CI gate:** the gate detects regressions in the scorer, runner,
+scope classifier, and mock plan values. It does NOT detect regressions in the live
+`AnthropicLLMClient` planner (returning the wrong metric for real questions), because
+the CI eval uses `MockLLMClient` with per-question `mock_plan` values. Regressions
+in the live planner are caught only by `@pytest.mark.live` tests (run manually with
+`ANTHROPIC_API_KEY` set).
+
 **Threshold revision policy:** if the baseline is intentionally lowered (e.g. because
 a new classifier trade-off is accepted), update this ADR, revise the threshold, and
 record the new baseline in the README results table.

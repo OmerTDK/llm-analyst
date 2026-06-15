@@ -12,7 +12,9 @@ definition changes and the number moves, the pin fails before the PR lands.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
 import duckdb
 import pytest
@@ -23,6 +25,7 @@ from llm_analyst.semantic_client import (
     GovernanceError,
     SemanticLayerClient,
 )
+from llm_analyst.semantic_client.client import _MF_MAX_RETRIES
 from llm_analyst.semantic_client.models import _METRIC_YAML_META
 
 FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "semantic_fixture.duckdb"
@@ -62,14 +65,14 @@ PINNED_DEFAULT_RATE = 47 / 1500
 
 
 @pytest.fixture(scope="module")
-def client() -> SemanticLayerClient:
-    """Construct the client once for all tests in this module.
+def client(session_semantic_client: SemanticLayerClient) -> SemanticLayerClient:
+    """Module alias for the session-scoped SemanticLayerClient.
 
-    SemanticLayerClient.__init__ calls validate(), which runs mf validate-configs.
-    If the fixture or YAML is broken, every test in the module fails fast here
-    rather than emitting a confusing error mid-suite.
+    The session-scoped fixture (conftest.py) is the real client; this alias
+    keeps test signatures unchanged while eliminating duplicate mf subprocess
+    calls that caused DuckDB write-lock contention in full-suite runs.
     """
-    return SemanticLayerClient()
+    return session_semantic_client
 
 
 # ── Existence and completeness tests ──────────────────────────────────────────
@@ -307,6 +310,73 @@ def test_governance_error_is_not_value_error(client: SemanticLayerClient) -> Non
         "GovernanceError must NOT be a subclass of ValueError — "
         "Phase 3 catches it by type and the catch hierarchy must be clean"
     )
+
+
+# ── mf subprocess retry tests ────────────────────────────────────────────────
+
+
+def test_run_retries_on_empty_stderr_exit_1(client: SemanticLayerClient) -> None:
+    """_run() must retry once when mf exits 1 with empty stderr (DuckDB lock-lag signature).
+
+    A spurious exit-1 with no stderr is the DuckDB write-lock lag pattern: the
+    previous mf process hasn't released the lock yet. The retry fires after a
+    short backoff and should succeed on the second attempt.
+
+    This test patches subprocess.run to fail once with empty stderr, then succeed.
+    It confirms: (a) _run retries after empty-stderr exit-1, (b) the successful
+    retry result is returned to the caller.
+    """
+    fail_result = subprocess.CompletedProcess(
+        args=["mf", "query"], returncode=1, stdout="", stderr=""
+    )
+    pass_result = subprocess.CompletedProcess(
+        args=["mf", "query"], returncode=0, stdout="ok", stderr=""
+    )
+    call_count = 0
+
+    def mock_run(*_args, **_kwargs):
+        nonlocal call_count
+        call_count += 1
+        return fail_result if call_count == 1 else pass_result
+
+    with (
+        patch("llm_analyst.semantic_client.client.subprocess.run", side_effect=mock_run),
+        patch("llm_analyst.semantic_client.client.time.sleep"),  # skip actual sleep
+    ):
+        result = client._run(["mf", "query"])
+
+    assert result.returncode == 0, "retry must return the successful result"
+    assert call_count == 2, f"Expected 2 subprocess.run calls (1 fail + 1 retry), got {call_count}"
+
+
+def test_run_does_not_retry_on_non_empty_stderr(client: SemanticLayerClient) -> None:
+    """_run() must NOT retry when exit-1 has non-empty stderr (genuine error).
+
+    Non-empty stderr means the mf process produced a real error message.
+    Retrying genuine errors wastes time and can hide bugs.
+    """
+    genuine_error = subprocess.CompletedProcess(
+        args=["mf", "query"],
+        returncode=1,
+        stdout="",
+        stderr="Error: metric 'foo' not found in catalog",
+    )
+    call_count = 0
+
+    def mock_run(*_args, **_kwargs):
+        nonlocal call_count
+        call_count += 1
+        return genuine_error
+
+    with patch("llm_analyst.semantic_client.client.subprocess.run", side_effect=mock_run):
+        result = client._run(["mf", "query"])
+
+    assert result.returncode == 1
+    assert "not found in catalog" in result.stderr
+    assert call_count == 1, (
+        f"Expected 1 subprocess.run call (no retry on non-empty stderr), got {call_count}"
+    )
+    assert _MF_MAX_RETRIES >= 1, "constant must be >= 1 or retry logic is dead"
 
 
 # ── _METRIC_YAML_META contract tests ─────────────────────────────────────────

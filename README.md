@@ -33,8 +33,8 @@ tests/fixtures/
 
 | Metric | Value |
 |---|---|
-| Test count | 110 passing (14 live deselected) |
-| Runtime | ~315 s (fixture already built; mf subprocess overhead) |
+| Test count | 115 passing (14 live deselected) |
+| Runtime | ~300 s (fixture already built; mf subprocess overhead; session-scoped client) |
 | Fixture size | 6.5 MB |
 | Governed metrics | 7 |
 | `origination_volume` (pinned) | 52,960,250.00 |

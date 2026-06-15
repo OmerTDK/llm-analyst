@@ -23,8 +23,14 @@ from llm_analyst.semantic_client.constants import GOVERNED_METRICS
 
 
 @pytest.fixture(scope="module")
-def semantic_client() -> SemanticLayerClient:
-    return SemanticLayerClient()
+def semantic_client(session_semantic_client: SemanticLayerClient) -> SemanticLayerClient:
+    """Module alias for the session-scoped SemanticLayerClient.
+
+    The session-scoped fixture (conftest.py) is the real client; this alias
+    keeps test signatures unchanged while eliminating duplicate mf subprocess
+    calls that caused DuckDB write-lock contention in full-suite runs.
+    """
+    return session_semantic_client
 
 
 def _make_guarded_analyst(
@@ -156,6 +162,38 @@ def test_marketing_budget_is_still_out_of_scope() -> None:
 
     assert not is_in_scope("What is the marketing budget for Q3?"), (
         "'marketing budget' must still be refused — 'marketing' remains an out-of-scope keyword"
+    )
+
+
+def test_average_loan_balance_is_in_scope() -> None:
+    """'average loan balance' must match the widened avg_balance pattern.
+
+    Regression for the original r'\\b(avg|average).?balance\\b' pattern which
+    required at most one character between 'average' and 'balance', failing on
+    'average loan balance' (5 chars between tokens). The widened pattern uses
+    '.*' so any phrasing of average + balance is matched.
+    """
+    from llm_analyst.guardrail.classifier import is_in_scope
+
+    assert is_in_scope("What is the average loan balance by product?"), (
+        "'average loan balance' must match the avg_balance in-scope pattern"
+    )
+    assert is_in_scope("What is the average outstanding balance across all loans in the book?"), (
+        "'average outstanding balance' must match the avg_balance in-scope pattern"
+    )
+
+
+def test_cumulative_losses_is_in_scope() -> None:
+    """'cumulative losses' must match the vintage_loss_curve in-scope pattern.
+
+    Regression for the original r'\\b(vintage|cohort|loss.?curve)\\b' pattern which
+    required the word 'curve', failing on 'cumulative losses' phrasing. The updated
+    pattern includes 'cumulative.?loss(es)?' to cover this natural phrasing.
+    """
+    from llm_analyst.guardrail.classifier import is_in_scope
+
+    assert is_in_scope("How do cumulative losses progress over the life of a loan?"), (
+        "'cumulative losses' must match the vintage_loss_curve in-scope pattern"
     )
 
 

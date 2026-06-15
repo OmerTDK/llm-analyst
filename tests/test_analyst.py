@@ -33,8 +33,14 @@ PINNED_ORIGINATION_VOLUME = 52_960_250.00
 
 
 @pytest.fixture(scope="module")
-def semantic_client() -> SemanticLayerClient:
-    return SemanticLayerClient()
+def semantic_client(session_semantic_client: SemanticLayerClient) -> SemanticLayerClient:
+    """Module alias for the session-scoped SemanticLayerClient.
+
+    The session-scoped fixture (conftest.py) is the real client; this alias
+    keeps test signatures unchanged while eliminating duplicate mf subprocess
+    calls that caused DuckDB write-lock contention in full-suite runs.
+    """
+    return session_semantic_client
 
 
 def _load_fixture(filename: str) -> dict:
