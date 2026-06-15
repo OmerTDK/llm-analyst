@@ -43,6 +43,7 @@ class LLMClient(Protocol):
         tools: list[dict[str, Any]],
         tool_choice: dict[str, Any],
         max_tokens: int,
+        temperature: float = 0.0,
     ) -> dict[str, Any]:
         """Return a Message-shaped dict with at minimum 'stop_reason' and 'content'."""
         ...
@@ -73,6 +74,7 @@ class AnthropicLLMClient:
         tools: list[dict[str, Any]],
         tool_choice: dict[str, Any],
         max_tokens: int,
+        temperature: float = 0.0,
     ) -> dict[str, Any]:
         message = self._client.messages.create(
             model=model,
@@ -81,5 +83,6 @@ class AnthropicLLMClient:
             tools=tools,  # type: ignore[arg-type]
             tool_choice=tool_choice,  # type: ignore[arg-type]
             max_tokens=max_tokens,
+            temperature=temperature,
         )
         return message.model_dump()

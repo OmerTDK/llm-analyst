@@ -9,9 +9,10 @@ Phase 2 must map natural-language questions to governed semantic-layer queries
 without allowing the LLM to bypass the metric allowlist. The key design choices are:
 
 1. How to structurally constrain the LLM's metric output to GOVERNED_METRICS.
-2. Which Claude model to use for planning vs. answer composition.
-3. Whether to make answer composition a second LLM call in Phase 2.
-4. How to test the LLM integration in CI without network calls or an API key.
+2. What temperature to use for planning vs. composition.
+3. Which Claude model to use for planning vs. answer composition.
+4. Whether to make answer composition a second LLM call in Phase 2.
+5. How to test the LLM integration in CI without network calls or an API key.
 
 ## Decisions
 
@@ -36,15 +37,36 @@ Anthropic's tool input validation.
 
 **Forced tool-use**: `tool_choice={"type": "tool", "name": "plan_query"}` guarantees
 `stop_reason == "tool_use"` is the only valid outcome. The `input_schema` includes
-`"metric": {"type": "string", "enum": sorted(GOVERNED_METRICS)}` — the enum is
-enforced at the API level, not just post-extraction. Any deviation from the enum
-would be a model failure (raising `PlannerError`), not a governance bypass. The
-post-extraction metric check is defense-in-depth against that theoretical case.
+`"metric": {"type": "string", "enum": sorted(GOVERNED_METRICS)}`.
 
-Forced tool-use is the only approach that puts the governance constraint inside the
-API call itself rather than in post-processing logic.
+The JSON schema enum is a prompt-level constraint that guides the model — the
+Anthropic API does not server-side reject responses whose `tool_input` falls outside
+the enum. If the model drifts and emits an ungoverned metric name, the API delivers
+the response unchanged. The **real governance enforcement boundary** is the
+post-extraction check in `_validate_and_build_plan` (planner.py lines 164-168):
+`if metric not in GOVERNED_METRICS: raise PlannerGovernanceError(...)`. The schema
+enum reduces the probability of a governance-violating response; the post-extraction
+check guarantees it is caught if the model drifts.
 
-### 2. Haiku for planning, Sonnet reserved for composition
+Forced tool-use is the only approach that puts a structural constraint on the
+*type* of response (tool_use vs. end_turn) inside the API call itself. Governance
+correctness — metric allowlist membership — is owned by the post-extraction check.
+
+### 2. Temperature: 0.0 for planning, higher allowed for composition
+
+**Decision: `temperature=0.0` is the default in `LLMClient.create_message`; the planner relies on this default.**
+
+The planner's correctness is tested by exact-match enum membership and dimension
+validation. Temperature=1.0 (the Anthropic API default when omitted) introduces
+unnecessary non-determinism in structured JSON output, which can cause dimension
+selections to vary across identical questions in live use. Temperature=0.0 maximises
+determinism for schema-constrained planning.
+
+Phase 3 composition (`COMPOSER_MODEL`) generates prose and may benefit from a higher
+temperature for stylistic variety. The caller passes `temperature=` explicitly when
+deviating from the default, keeping the intent visible at the call site.
+
+### 4. Haiku for planning, Sonnet reserved for composition
 
 **Decision: `claude-haiku-4-5-20251001` for planning, `claude-sonnet-4-5-20250929`
 for Phase 3 answer composition.**
@@ -63,7 +85,7 @@ Model IDs are the only place in the codebase where model strings appear
 (`src/llm_analyst/llm/client.py: PLANNER_MODEL, COMPOSER_MODEL`). One file to
 update when Anthropic releases new versions.
 
-### 3. Pure-Python answer composition in Phase 2
+### 5. Pure-Python answer composition in Phase 2
 
 **Decision: template-based `AnswerComposer` in Phase 2, no second LLM call.**
 
@@ -86,7 +108,7 @@ The `AnswerComposer` class is the upgrade boundary: Phase 3 replaces `_format_pr
 with an `LLMClient.create_message` call using `COMPOSER_MODEL` without changing the
 `Analyst.answer()` interface.
 
-### 4. MockLLMClient + golden-plan fixtures vs VCR cassettes
+### 6. MockLLMClient + golden-plan fixtures vs VCR cassettes
 
 **Decision: `MockLLMClient` with 14 golden-plan JSON fixtures.**
 
@@ -110,7 +132,7 @@ The tradeoff: `MockLLMClient` tests the Analyst pipeline but not the real LLM
 behavior. `test_planner_live.py` covers the real behavior, gated behind
 `@pytest.mark.live` and skipped in CI via `addopts = "-m 'not live'"`.
 
-### 5. Single-turn planning vs multi-turn clarification
+### 7. Single-turn planning vs multi-turn clarification
 
 **Decision: single-turn planning.**
 
@@ -131,9 +153,10 @@ clean.
 - CI is fully self-contained: `make ci` passes with no network access and no
   `ANTHROPIC_API_KEY`. The 14 golden-plan fixtures and the Phase 1 DuckDB fixture
   are all the data CI needs.
-- Governance is structural: an ungoverned metric cannot pass through the API call
-  and reach the semantic client. Two post-extraction checks (metric enum, dimension
-  set) add defense-in-depth.
+- Governance is enforced: the post-extraction metric check (`_validate_and_build_plan`)
+  is the real enforcement boundary. The tool schema enum reduces model drift
+  probability; the post-extraction check plus the dimension check guarantee an
+  ungoverned plan cannot reach the semantic client.
 - `PlannerGovernanceError` subclasses `GovernanceError`, so Phase 3 catches both
   planner and semantic-client governance violations with a single `except
   GovernanceError` handler.
