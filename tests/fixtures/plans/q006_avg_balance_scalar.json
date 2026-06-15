@@ -1,0 +1,10 @@
+{
+    "question": "What is the average outstanding balance across all loans?",
+    "expected_plan": {
+        "metric": "avg_balance",
+        "dimensions": [],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "avg_balance gives the mean outstanding balance across the entire portfolio."
+    }
+}

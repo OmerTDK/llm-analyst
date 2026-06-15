@@ -1,0 +1,10 @@
+{
+    "question": "How much of the portfolio is currently delinquent?",
+    "expected_plan": {
+        "metric": "delinquency_rate",
+        "dimensions": [],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "delinquency_rate gives the fraction of the portfolio that is past due, answering the portfolio-level delinquency question."
+    }
+}

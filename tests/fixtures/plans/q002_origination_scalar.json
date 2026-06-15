@@ -1,0 +1,10 @@
+{
+    "question": "How much was originated in total across the whole portfolio?",
+    "expected_plan": {
+        "metric": "origination_volume",
+        "dimensions": [],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "origination_volume gives the total principal originated across all loans."
+    }
+}

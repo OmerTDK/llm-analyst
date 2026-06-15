@@ -3,7 +3,9 @@ name = "llm-analyst"
 version = "0.1.0"
 description = "Natural-language analytics over a governed semantic layer, with eval suite and guardrails"
 requires-python = ">=3.12,<3.14"
-dependencies = []
+dependencies = [
+    "anthropic>=0.40,<1",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -31,3 +33,5 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "ARG", "PTH", "RUF"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["live: requires ANTHROPIC_API_KEY, skipped in CI"]
+addopts = "-m 'not live'"

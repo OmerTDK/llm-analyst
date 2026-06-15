@@ -1,0 +1,10 @@
+{
+    "question": "What is the delinquency rate by credit tier?",
+    "expected_plan": {
+        "metric": "delinquency_rate",
+        "dimensions": ["loan__credit_tier"],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "delinquency_rate measures the proportion of loans past due; credit tier segmentation reveals where delinquency concentrates."
+    }
+}

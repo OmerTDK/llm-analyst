@@ -1,0 +1,10 @@
+{
+    "question": "Show the vintage loss curve by origination cohort quarter.",
+    "expected_plan": {
+        "metric": "vintage_loss_curve",
+        "dimensions": ["vintage_curve__cohort_quarter", "vintage_curve__months_on_book"],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "vintage_loss_curve tracks cumulative default rates over loan age; cohort_quarter and months_on_book dimensions build the traditional S-curve."
+    }
+}

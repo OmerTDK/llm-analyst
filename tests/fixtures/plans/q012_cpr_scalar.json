@@ -1,0 +1,10 @@
+{
+    "question": "What is the overall conditional prepayment rate for the portfolio?",
+    "expected_plan": {
+        "metric": "cpr",
+        "dimensions": [],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "cpr is the annualized prepayment speed of the portfolio, giving the overall rate at which borrowers repay ahead of schedule."
+    }
+}

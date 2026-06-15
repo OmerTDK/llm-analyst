@@ -1,0 +1,10 @@
+{
+    "question": "What is the total origination volume by product type?",
+    "expected_plan": {
+        "metric": "origination_volume",
+        "dimensions": ["loan__product"],
+        "filters": [],
+        "time_grain": null,
+        "rationale": "origination_volume measures the total principal amount originated, broken down by product."
+    }
+}
