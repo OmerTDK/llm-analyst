@@ -12,7 +12,6 @@ Run with:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import streamlit as st
@@ -43,8 +42,6 @@ def _build_analyst() -> GuardedAnalyst:
     ~20 s on first run (dbt parse + mf subprocess). st.cache_resource ensures
     it happens once and is shared across all browser sessions.
     """
-    platform_root = Path(__file__).resolve().parent.parent / "platform"
-    os.chdir(str(platform_root.parent))  # run from repo root for relative paths
     semantic_client = SemanticLayerClient()
     mock_llm = MockLLMClient(DEMO_PLAN_REGISTRY)
     return GuardedAnalyst(llm_client=mock_llm, semantic_client=semantic_client)
