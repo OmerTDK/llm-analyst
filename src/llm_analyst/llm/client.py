@@ -25,7 +25,7 @@ import anthropic
 # Haiku for planning: low-latency structured output, no prose needed.
 # Sonnet reserved for Phase 3 answer composition where prose quality matters.
 PLANNER_MODEL = "claude-haiku-4-5"
-COMPOSER_MODEL = "claude-sonnet-4-5"
+COMPOSER_MODEL = "claude-sonnet-4-6"
 
 
 @runtime_checkable

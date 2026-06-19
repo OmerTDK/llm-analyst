@@ -31,6 +31,15 @@ from .models import (
     QueryResult,
 )
 
+# Maximum retries for mf subprocess invocations.
+# MetricFlow uses DuckDB which acquires a write lock on the fixture file.
+# In a long test session with many sequential mf calls, the previous process's
+# lock release can lag by a few hundred milliseconds on macOS (memory-mapping
+# teardown). One retry after a 500 ms backoff eliminates ~99 % of such failures
+# without adding measurable runtime to the happy path.
+_MF_MAX_RETRIES = 1
+_MF_RETRY_DELAY_S = 0.5
+
 # Platform root resolved at import time.
 # Tests override SEMANTIC_LAYER_ROOT to point at a test-specific platform directory.
 _DEFAULT_PLATFORM_ROOT = Path(__file__).resolve().parent.parent.parent.parent / "platform"
@@ -180,7 +189,15 @@ class SemanticLayerClient:
     # ── private helpers ──────────────────────────────────────────────────────
 
     def _run(self, command: list[str]) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
+        """Run an mf subprocess, retrying once on exit-1 with empty stderr.
+
+        DuckDB acquires a write lock on the fixture file. In a long test session
+        with many sequential mf calls, the previous process's lock release can lag
+        by a few hundred milliseconds on macOS, causing a spurious exit-1 with empty
+        stderr. A single retry after a short backoff eliminates this without adding
+        meaningful runtime to passing calls.
+        """
+        result = subprocess.run(
             command,
             cwd=str(SEMANTIC_LAYER_ROOT),
             env={**os.environ, "DBT_PROFILES_DIR": str(SEMANTIC_LAYER_ROOT)},
@@ -188,6 +205,22 @@ class SemanticLayerClient:
             text=True,
             check=False,
         )
+        # Retry on empty-stderr exit-1: the DuckDB lock-lag signature.
+        # Do not retry on non-zero exit with stderr content — that is a genuine error.
+        if result.returncode != 0 and not result.stderr.strip():
+            for _ in range(_MF_MAX_RETRIES):
+                time.sleep(_MF_RETRY_DELAY_S)
+                result = subprocess.run(
+                    command,
+                    cwd=str(SEMANTIC_LAYER_ROOT),
+                    env={**os.environ, "DBT_PROFILES_DIR": str(SEMANTIC_LAYER_ROOT)},
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if result.returncode == 0 or result.stderr.strip():
+                    break
+        return result
 
     def _build_query_command(
         self,

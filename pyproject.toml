@@ -5,6 +5,8 @@ description = "Natural-language analytics over a governed semantic layer, with e
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "anthropic>=0.40,<1",
+    "pyyaml>=6.0",
+    "streamlit>=1.45",
 ]
 
 [build-system]
@@ -35,3 +37,4 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "ARG", "PTH", "RUF"]
 testpaths = ["tests"]
 markers = ["live: requires ANTHROPIC_API_KEY, skipped in CI"]
 addopts = "-m 'not live'"
+pythonpath = ["."]
