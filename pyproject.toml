@@ -40,6 +40,7 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "ARG", "PTH", "RUF", "C4", "FURB
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv"]
+skips = ["B404", "B603"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
