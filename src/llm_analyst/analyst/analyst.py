@@ -7,12 +7,16 @@ guardrail layer.
 
 from __future__ import annotations
 
-from llm_analyst.semantic_client.client import SemanticLayerClient
+from typing import TYPE_CHECKING
 
-from ..llm.client import LLMClient
 from .composer import AnswerComposer
-from .models import AnalystAnswer
 from .planner import QueryPlanner
+
+if TYPE_CHECKING:
+    from llm_analyst.semantic_client.client import SemanticLayerClient
+
+    from ..llm.client import LLMClient
+    from .models import AnalystAnswer
 
 
 class Analyst:

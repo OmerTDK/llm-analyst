@@ -11,9 +11,12 @@ COMPOSER_MODEL. The AnswerComposer class boundary is the upgrade point.
 
 from __future__ import annotations
 
-from llm_analyst.semantic_client.models import QueryResult
+from typing import TYPE_CHECKING
 
 from .models import AnalystAnswer, QueryPlan
+
+if TYPE_CHECKING:
+    from llm_analyst.semantic_client.models import QueryResult
 
 
 class AnswerComposer:

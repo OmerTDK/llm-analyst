@@ -5,11 +5,18 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v8.2.0
       - name: Install dependencies
         run: uv sync
@@ -26,3 +33,23 @@ jobs:
         # check-semantic-drift requires the credit-data-platform repo to be present.
         # It is not available in CI (external repo, not a submodule).
         # Run it locally with: make check-semantic-drift
+
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v8.2.0
+      - run: uv sync
+      - name: bandit (Python SAST)
+        run: uv run bandit -r src -c pyproject.toml
+      - name: pip-audit (dependency CVEs)
+        run: uv run pip-audit
+      - name: gitleaks (secret scan)
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -13,14 +13,17 @@ Run with:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import streamlit as st
 
 from app.registry import DEMO_PLAN_REGISTRY, EXAMPLE_QUESTIONS, OUT_OF_SCOPE_EXAMPLES
 from llm_analyst import GuardedAnalyst, RefusalResponse
-from llm_analyst.analyst.models import AnalystAnswer
 from llm_analyst.llm.mock import MockLLMClient
 from llm_analyst.semantic_client import SemanticLayerClient
+
+if TYPE_CHECKING:
+    from llm_analyst.analyst.models import AnalystAnswer
 
 # ── Page config ─────────────────────────────────────────────────────────────────
 
