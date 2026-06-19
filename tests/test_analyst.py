@@ -18,13 +18,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from llm_analyst.analyst import Analyst, PlannerGovernanceError
 from llm_analyst.llm import MockLLMClient
-from llm_analyst.semantic_client import SemanticLayerClient
 from llm_analyst.semantic_client.models import GovernanceError
+
+if TYPE_CHECKING:
+    from llm_analyst.semantic_client import SemanticLayerClient
 
 FIXTURE_PLANS_DIR = Path(__file__).resolve().parent / "fixtures" / "plans"
 

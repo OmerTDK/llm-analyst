@@ -17,11 +17,17 @@ lifetime (fixture is immutable within a session).
 
 from __future__ import annotations
 
-from llm_analyst.semantic_client.client import SemanticLayerClient
+from typing import TYPE_CHECKING
+
 from llm_analyst.semantic_client.constants import GOVERNED_METRICS
 
-from ..llm.client import PLANNER_MODEL, LLMClient
+from ..llm.client import PLANNER_MODEL
 from .models import PlannerError, PlannerGovernanceError, QueryPlan
+
+if TYPE_CHECKING:
+    from llm_analyst.semantic_client.client import SemanticLayerClient
+
+    from ..llm.client import LLMClient
 
 _SYSTEM_TEMPLATE = """\
 You are a query planner for a governed loan-portfolio analytics system.

@@ -40,14 +40,18 @@ import re
 # Metric-family topic keywords.
 # Each tuple is a pattern fragment joined into a single compiled regex.
 _IN_SCOPE_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\b(origination|originated|loan.?(volume|count|book)|funded|disbursed)\b", re.I),
-    re.compile(r"\b(default.?rate|default(ed)?|loss.?rate|credit.?loss|write.?off)\b", re.I),
-    re.compile(r"\b(avg|average)\b.*\bbalance\b", re.I),
-    re.compile(r"\b(portfolio.?yield|interest.?rate|annualized.?return|yield)\b", re.I),
-    re.compile(r"\b(delinquen(cy|t)|past.?due|overdue|days.?past.?due)\b", re.I),
-    re.compile(r"\b(prepay(ment)?|prepaid|cpr|conditional.?prepayment)\b", re.I),
-    re.compile(r"\b(vintage|cohort|loss.?curve|cumulative.?loss(es)?)\b", re.I),
-    re.compile(r"\b(portfolio|loan.?book|loan.?portfolio|loan.?pool)\b", re.I),
+    re.compile(
+        r"\b(origination|originated|loan.?(volume|count|book)|funded|disbursed)\b", re.IGNORECASE
+    ),
+    re.compile(
+        r"\b(default.?rate|default(ed)?|loss.?rate|credit.?loss|write.?off)\b", re.IGNORECASE
+    ),
+    re.compile(r"\b(avg|average)\b.*\bbalance\b", re.IGNORECASE),
+    re.compile(r"\b(portfolio.?yield|interest.?rate|annualized.?return|yield)\b", re.IGNORECASE),
+    re.compile(r"\b(delinquen(cy|t)|past.?due|overdue|days.?past.?due)\b", re.IGNORECASE),
+    re.compile(r"\b(prepay(ment)?|prepaid|cpr|conditional.?prepayment)\b", re.IGNORECASE),
+    re.compile(r"\b(vintage|cohort|loss.?curve|cumulative.?loss(es)?)\b", re.IGNORECASE),
+    re.compile(r"\b(portfolio|loan.?book|loan.?portfolio|loan.?pool)\b", re.IGNORECASE),
 ]
 
 # ── Out-of-scope hard-block patterns ─────────────────────────────────────────
@@ -58,25 +62,25 @@ _IN_SCOPE_PATTERNS: list[re.Pattern[str]] = [
 # origination volume from Q1?" or "Show defaults where vintage is 2024?".
 # The remaining keywords (SELECT, INSERT, UPDATE, DELETE, DROP, CREATE, ALTER)
 # are unambiguous SQL signals that do not appear in normal English prose.
-_SQL_PATTERN = re.compile(r"\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER)\b", re.I)
+_SQL_PATTERN = re.compile(r"\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER)\b", re.IGNORECASE)
 
 # Out-of-scope domain signals
 _OUT_OF_SCOPE_PATTERNS: list[re.Pattern[str]] = [
     # Stock market / equity investing
-    re.compile(r"\b(stock|share.?price|equity|ticker|dividend|P\/E|market.?cap)\b", re.I),
+    re.compile(r"\b(stock|share.?price|equity|ticker|dividend|P\/E|market.?cap)\b", re.IGNORECASE),
     # HR / personnel / salary signals
-    re.compile(r"\b(CEO|CFO|CTO|salary|employee|staff|headcount|org.?chart)\b", re.I),
+    re.compile(r"\b(CEO|CFO|CTO|salary|employee|staff|headcount|org.?chart)\b", re.IGNORECASE),
     # Marketing / brand signals.
     # "budget" is excluded from this group: it is common in finance/portfolio
     # contexts ("origination budget target", "Q3 budget vs. actuals"). Bare
     # "budget" is not a reliable out-of-scope signal. If marketing-budget
     # phrasing must be blocked, use a compound pattern anchored to a marketing
     # term (e.g. "marketing budget") rather than bare "budget".
-    re.compile(r"\b(marketing|campaign|brand|ad(vertis(ing|ement))?)\b", re.I),
+    re.compile(r"\b(marketing|campaign|brand|ad(vertis(ing|ement))?)\b", re.IGNORECASE),
     # Personal information about a specific named borrower.
     # "credit score" (without a portfolio modifier) is a PII signal — the governed
     # semantic layer does not expose individual credit scores.
-    re.compile(r"\b(my\s+credit|my\s+loan|my\s+account|credit\s+score(\s+for)?)\b", re.I),
+    re.compile(r"\b(my\s+credit|my\s+loan|my\s+account|credit\s+score(\s+for)?)\b", re.IGNORECASE),
     # Named individuals (heuristic: three or more capitalized words in sequence,
     # e.g. "John Michael Smith"). Two-word patterns are excluded because they
     # produce false negatives on geographic names ("New York", "San Francisco",
@@ -84,7 +88,9 @@ _OUT_OF_SCOPE_PATTERNS: list[re.Pattern[str]] = [
     # Three consecutive capitalized words is a much stronger personal-name signal.
     re.compile(r"\b[A-Z][a-z]{2,}\s+[A-Z][a-z]{2,}\s+[A-Z][a-z]{2,}\b"),
     # Role/person queries (who is, head of, director of, manager of)
-    re.compile(r"\b(who\s+is|head\s+of|director\s+of|manager\s+of|chief\s+of|VP\s+of)\b", re.I),
+    re.compile(
+        r"\b(who\s+is|head\s+of|director\s+of|manager\s+of|chief\s+of|VP\s+of)\b", re.IGNORECASE
+    ),
 ]
 
 

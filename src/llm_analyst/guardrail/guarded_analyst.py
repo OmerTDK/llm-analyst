@@ -23,10 +23,14 @@ only path to an answer.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from llm_analyst.analyst import Analyst, AnalystAnswer
-from llm_analyst.llm.client import LLMClient
-from llm_analyst.semantic_client.client import SemanticLayerClient
 from llm_analyst.semantic_client.models import GovernanceError
+
+if TYPE_CHECKING:
+    from llm_analyst.llm.client import LLMClient
+    from llm_analyst.semantic_client.client import SemanticLayerClient
 
 from .classifier import governance_refusal_explanation, is_in_scope, scope_refusal_explanation
 from .models import RefusalResponse
